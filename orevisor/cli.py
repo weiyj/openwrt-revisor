@@ -17,11 +17,16 @@
 # along with this program; if not, write to the Free Software
 # Foundation, Inc., 59 Temple Place - Suite 330, Boston, MA 02111-1307, USA.
 
+import sys
+
 class RevisorCLI:
     def __init__(self, base):
         self.base = base
         self.log = base.log
+        self.cfg = base.cfg
 
     def run(self):
-        pass
+        if not self.cfg.check_working_directory():
+            sys.exit(1)
 
+        self.cfg.check_destination_directory()
