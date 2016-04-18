@@ -86,6 +86,13 @@ class Revisor:
                                 help    = _("Working directory"),
                                 metavar = "[directory]")
 
+        config_group.add_option("--model",
+                                dest    = "model",
+                                action  = "store",
+                                default = "Openwrt",
+                                help    = _("Model to use for composing"),
+                                metavar = "[model]")
+
         config_group.add_option("--openwrt-directory",
                                 dest    = "openwrt_directory",
                                 action  = "store",

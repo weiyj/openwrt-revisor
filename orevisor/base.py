@@ -98,6 +98,10 @@ class RevisorBase:
 
         self.log.info("Total %d packages, download size %d" % (len(self.packages), totalSize))
 
+    def download_packages(self):
+        self.log.info("Downloading packages...")
+        self.cfg.execute_shell("/bin/cp -rf %s %s" % (self.cfg.openwrt_packages, self.cfg.install_directory))
+
     def lift_off(self):
         groupList = self.cfg.get_item("packages", "groupList")
         packageList = self.cfg.get_item("packages", "packageList")
@@ -105,6 +109,7 @@ class RevisorBase:
 
         self.check_dependencies(groupList, packageList, excludedList)
         self.report_packages_stat()
+        self.download_packages()
 
         self.buildInstallationMedia()
 

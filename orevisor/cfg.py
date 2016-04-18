@@ -60,6 +60,8 @@ class RevisorConfig:
     def check_working_directory(self):
         self.log.debug(_("Checking working directories"))
         
+        self.install_directory = "%s/revisor-install/%s/%s/%s/os" % (self.working_directory, self.version, self.model, self.architecture)
+
         complain = False
         if os.access(os.path.join(self.working_directory,"revisor-install"), os.R_OK):
             complain = True
@@ -67,13 +69,18 @@ class RevisorConfig:
             complain = True
         if os.access(os.path.join(self.working_directory,"revisor-rundir"), os.R_OK):
             complain = True
+        if os.access(self.install_directory, os.R_OK):
+            complain = True
 
         if complain:
             self.log.debug(_("The directories Revisor uses in %s already exist. Revisor deleted them." % self.working_directory))
 
         if not os.access(os.path.join(self.working_directory, "revisor-install", "tmp"), os.R_OK):
             os.makedirs(os.path.join(self.working_directory, "revisor-install", "tmp"))
-            
+
+        if not os.access(self.install_directory, os.R_OK):
+            os.makedirs(self.install_directory)
+
         return True
 
     def execute_shell(self, args):
@@ -97,6 +104,15 @@ class RevisorConfig:
 
     def check_openwrt_directory(self):
         self.log.debug(_("Checking openwrt build directory %s") % self.openwrt_directory)
+
+        if os.access(os.path.join(self.openwrt_directory, "packages"), os.R_OK):
+            packages = os.path.join(self.openwrt_directory, "packages")
+            self.openwrt_packages = packages
+            self.log.debug(_("Openwrt imagebuilder directory %s exists") % packages)
+        elif os.access(os.path.join(self.openwrt_directory, "bin" , "x86", "packages"), os.R_OK):
+            packages = os.path.join(self.openwrt_directory, "bin" , "x86", "packages")
+            self.openwrt_packages = packages
+            self.log.debug(_("Openwrt build directory %s exists") % packages)
 
         staging_dir = os.path.join(self.openwrt_directory, "staging_dir")
         if not os.access(staging_dir, os.R_OK):
@@ -247,19 +263,6 @@ class RevisorConfig:
         #print pkginfo
         return pkginfo
 
-'''
-Package: base-files
-Version: 168-r49119
-Depends: libc, netifd, procd, jsonfilter, usign, fstools
-Status: unknown ok not-installed
-Section: base
-Architecture: x86_64
-MD5Sum: c6ed9366bf7685e1c0b776fe2252cc39
-Size: 33225
-Filename: base-files_168-r49119_x86_64.ipk
-Source: package/base-files
-Description: This package contains a base filesystem and system scripts for OpenWrt.
-'''
 class Defaults:
     def __init__(self):
         self.release_pkgs = ""
