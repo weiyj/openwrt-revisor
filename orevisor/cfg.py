@@ -85,8 +85,10 @@ class RevisorConfig:
 
     def execute_shell(self, args):
         if isinstance(args, basestring):
+            self.log.debug(args)
             shelllog = subprocess.Popen(args, shell=True, stdout=subprocess.PIPE)
         else:
+            self.log.debug(' '.join(args))
             shelllog = subprocess.Popen(args, stdout=subprocess.PIPE)
         shellOut = shelllog.communicate()[0]
     
@@ -125,14 +127,24 @@ class RevisorConfig:
             return False
 
         ipkgtmp = os.path.join(self.working_directory, "openwrt", "tmp", "ipkgtmp")
-        if not os.access(ipkgtmp, os.R_OK):
+        if not os.path.exists(ipkgtmp):
             self.log.debug(_("Create directory %s") % ipkgtmp)
             os.makedirs(ipkgtmp)
 
         ipkgdl = os.path.join(self.working_directory, "openwrt", "dl")
-        if not os.access(ipkgdl, os.R_OK):
+        if not os.path.exists(ipkgdl):
             self.log.debug(_("Create directory %s") % ipkgdl)
             os.makedirs(ipkgdl)
+
+        ipkgos = os.path.join(self.working_directory, "openwrt", "os")
+        if not os.path.exists(ipkgos):
+            self.log.debug(_("Create directory %s") % ipkgos)
+            os.makedirs(os.path.join(ipkgos, 'tmp'))
+        else:
+            self.log.debug(_("Clean directory %s") % ipkgos)
+            self.execute_shell("rm -rf %s/*" % ipkgos)
+            os.makedirs(os.path.join(ipkgos, 'tmp'))
+            
 
         tmp = os.path.join(self.working_directory, "openwrt", "tmp")
         install = os.path.join(self.working_directory, "revisor-install")
@@ -226,6 +238,7 @@ class RevisorConfig:
         if len(lines) == 1:
             pkginfo['name'] = pkg
             pkginfo['size'] = os.path.getsize(lines[0])
+            pkginfo['file'] = lines[0]
 
         return pkginfo
 
@@ -263,6 +276,36 @@ class RevisorConfig:
         #print pkginfo
         return pkginfo
 
+    def opkg_install(self, pkgs, packages):
+        ipkgtmp = os.path.join(self.working_directory, "openwrt", "tmp", "ipkgtmp")
+        tmp = os.path.join(self.working_directory, "openwrt", "tmp")
+        ipkgdl = os.path.join(self.working_directory, "openwrt", "dl")
+        install = os.path.join(self.working_directory, "openwrt", "os")
+        binopkg = os.path.join(self.openwrt_directory, "staging_dir", "host", "bin", "opkg")
+        repo = "conf/conf.d/opkg.conf"
+
+        cmd = "IPKG_NO_SCRIPT=1 IPKG_TMP='%s' IPKG_INSTROOT='%s' IPKG_CONF_DIR='%s' IPKG_OFFLINE_ROOT='%s' %s -f %s --offline-root %s --add-dest root:/ --add-arch all:100 --add-arch x86_64:200 update" % (ipkgtmp, install, tmp, install, binopkg, repo, install)
+        self.execute_shell(cmd)
+
+        self.log.info(_("Installing package libgcc"))
+        pkginfo = self.opkg_info_from_file('libgcc')
+        cmd = "IPKG_NO_SCRIPT=1 IPKG_TMP='%s' IPKG_INSTROOT='%s' IPKG_CONF_DIR='%s' IPKG_OFFLINE_ROOT='%s' %s -f %s --offline-root %s --add-dest root:/ --add-arch all:100 --add-arch x86_64:200 install %s" % (ipkgtmp, install, tmp, install, binopkg, repo, install, pkginfo['file'])
+        self.execute_shell(cmd)
+
+        self.log.info(_("Installing package libc"))
+        cmd = "IPKG_NO_SCRIPT=1 IPKG_TMP='%s' IPKG_INSTROOT='%s' IPKG_CONF_DIR='%s' IPKG_OFFLINE_ROOT='%s' %s -f %s --offline-root %s --add-dest root:/ --add-arch all:100 --add-arch x86_64:200 install %s" % (ipkgtmp, install, tmp, install, binopkg, repo, install, packages['libc']['file'])
+        self.execute_shell(cmd)
+
+        self.log.info(_("Installing package kernel"))
+        cmd = "IPKG_NO_SCRIPT=1 IPKG_TMP='%s' IPKG_INSTROOT='%s' IPKG_CONF_DIR='%s' IPKG_OFFLINE_ROOT='%s' %s -f %s --offline-root %s --add-dest root:/ --add-arch all:100 --add-arch x86_64:200 install %s" % (ipkgtmp, install, tmp, install, binopkg, repo, install, packages['kernel']['file'])
+        self.execute_shell(cmd)
+
+        pkgs.remove('libc')
+        pkgs.remove('kernel')
+        
+        cmd = "IPKG_NO_SCRIPT=1 IPKG_TMP='%s' IPKG_INSTROOT='%s' IPKG_CONF_DIR='%s' IPKG_OFFLINE_ROOT='%s' %s -f %s --offline-root %s --add-dest root:/ --add-arch all:100 --add-arch x86_64:200 install %s" % (ipkgtmp, install, tmp, install, binopkg, repo, install, ' '.join(pkgs))
+        self.execute_shell(cmd)
+
 class Defaults:
     def __init__(self):
         self.release_pkgs = ""
@@ -275,5 +318,18 @@ class Runtime:
         for option in defaults.__dict__.keys():
             self.__dict__[option] = defaults.__dict__[option]
 
+        self.mediatypes = {
+            "unified":  {
+                "size": -1,
+                "discdir": "unified",
+                "label" : "",
+                "discs": 1,
+                "compose": "self.cfg.media_installation_unified"
+            }
+        }
+
         self.cmd_mkisofs = ['/usr/bin/mkisofs', '-v', '-U', '-J', '-R', '-T', '-f']
+
+        self.bootargs = ['-b', 'isolinux/isolinux.bin', '-c', 'isolinux/boot.cat',
+                         '-no-emul-boot', '-boot-load-size', '4', '-boot-info-table']
 

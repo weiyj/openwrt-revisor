@@ -22,6 +22,7 @@ import logging
 
 from orevisor.logger import RevisorLogger
 from orevisor.cfg import RevisorConfig
+from orevisor.pungi import RevisorPungi
 from orevisor.translate import _
 
 class RevisorBase:
@@ -102,6 +103,10 @@ class RevisorBase:
         self.log.info("Downloading packages...")
         self.cfg.execute_shell("/bin/cp -rf %s %s" % (self.cfg.openwrt_packages, self.cfg.install_directory))
 
+    def install_packages(self, packageList):
+        self.log.info("Installing packages...")
+        self.cfg.opkg_install(packageList, self.packages)
+        
     def lift_off(self):
         groupList = self.cfg.get_item("packages", "groupList")
         packageList = self.cfg.get_item("packages", "packageList")
@@ -110,9 +115,14 @@ class RevisorBase:
         self.check_dependencies(groupList, packageList, excludedList)
         self.report_packages_stat()
         self.download_packages()
+        self.install_packages(packageList)
 
         self.buildInstallationMedia()
 
     def buildInstallationMedia(self):
-        pass
+        mypungi = RevisorPungi(self)
+
+        mypungi.buildIsolinux()
+        mypungi.doCreateIso(mediatype='unified')
+
     
