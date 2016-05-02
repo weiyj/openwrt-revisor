@@ -53,7 +53,7 @@ class RevisorPungi:
         self.cfg.execute_shell("cp conf/isolinux/splash.jpg %s" % isolinux)
         self.cfg.execute_shell("cp %s/bin/x86/openwrt-x86-64-vmlinuz %s/vmlinuz" % (self.cfg.openwrt_directory, isolinux))
 
-        
+
     def doCreateIso(self, mediatype=None, disc=0,  callback=None, is_source=False):
 
         mt = self.cfg.mediatypes[mediatype]

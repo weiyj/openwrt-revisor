@@ -287,11 +287,6 @@ class RevisorConfig:
         cmd = "IPKG_NO_SCRIPT=1 IPKG_TMP='%s' IPKG_INSTROOT='%s' IPKG_CONF_DIR='%s' IPKG_OFFLINE_ROOT='%s' %s -f %s --offline-root %s --add-dest root:/ --add-arch all:100 --add-arch x86_64:200 update" % (ipkgtmp, install, tmp, install, binopkg, repo, install)
         self.execute_shell(cmd)
 
-        self.log.info(_("Installing package libgcc"))
-        pkginfo = self.opkg_info_from_file('libgcc')
-        cmd = "IPKG_NO_SCRIPT=1 IPKG_TMP='%s' IPKG_INSTROOT='%s' IPKG_CONF_DIR='%s' IPKG_OFFLINE_ROOT='%s' %s -f %s --offline-root %s --add-dest root:/ --add-arch all:100 --add-arch x86_64:200 install %s" % (ipkgtmp, install, tmp, install, binopkg, repo, install, pkginfo['file'])
-        self.execute_shell(cmd)
-
         self.log.info(_("Installing package libc"))
         cmd = "IPKG_NO_SCRIPT=1 IPKG_TMP='%s' IPKG_INSTROOT='%s' IPKG_CONF_DIR='%s' IPKG_OFFLINE_ROOT='%s' %s -f %s --offline-root %s --add-dest root:/ --add-arch all:100 --add-arch x86_64:200 install %s" % (ipkgtmp, install, tmp, install, binopkg, repo, install, packages['libc']['file'])
         self.execute_shell(cmd)
@@ -304,6 +299,16 @@ class RevisorConfig:
         pkgs.remove('kernel')
         
         cmd = "IPKG_NO_SCRIPT=1 IPKG_TMP='%s' IPKG_INSTROOT='%s' IPKG_CONF_DIR='%s' IPKG_OFFLINE_ROOT='%s' %s -f %s --offline-root %s --add-dest root:/ --add-arch all:100 --add-arch x86_64:200 install %s" % (ipkgtmp, install, tmp, install, binopkg, repo, install, ' '.join(pkgs))
+        self.execute_shell(cmd)
+
+        self.log.info(_("Activating init scripts"))
+        cmd = "mkdir -p %s/etc/rc.d" % install
+        self.execute_shell(cmd)
+        cmd = "cd %s; for script in ./usr/lib/opkg/info/*.postinst; do IPKG_INSTROOT=%s $(which bash) $script; done" % (install, install)
+        self.execute_shell(cmd)
+        cmd = "rm -f %s/usr/lib/opkg/info/*.postinst" % install
+        self.execute_shell(cmd)
+        cmd = "cd %s; sed -i 's/askfirst/respawn/g' ./etc/inittab " % (install)
         self.execute_shell(cmd)
 
 class Defaults:
